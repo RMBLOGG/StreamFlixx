@@ -10,13 +10,13 @@ import cloudinary
 import cloudinary.uploader
 import uuid
 
-# Load .env
+# Load .env (untuk development lokal)
 load_dotenv()
 
 # Flask init
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET', 'change-me-please')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///app.db')
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET', 'fallback-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL') or 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Cloudinary config (from env)
@@ -132,31 +132,50 @@ def utility_processor():
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# Create DB and default admin if needed
-with app.app_context():
-    db.create_all()
-    cleanup_expired_codes()
-    admin_email = os.getenv('ADMIN_EMAIL')
-    admin_password = os.getenv('ADMIN_PASSWORD')
-    if admin_email and admin_password:
-        admin = User.query.filter_by(email=admin_email).first()
-        if not admin:
-            admin = User(email=admin_email, password=generate_password_hash(admin_password), role='admin')
-            db.session.add(admin)
-            db.session.commit()
-            print('=> Admin created:', admin_email)
+# Initialize database
+def init_db():
+    with app.app_context():
+        try:
+            db.create_all()
+            cleanup_expired_codes()
+            
+            # Create default admin user if not exists
+            admin_email = os.getenv('ADMIN_EMAIL')
+            admin_password = os.getenv('ADMIN_PASSWORD')
+            if admin_email and admin_password:
+                admin = User.query.filter_by(email=admin_email).first()
+                if not admin:
+                    admin = User(
+                        email=admin_email, 
+                        password=generate_password_hash(admin_password), 
+                        role='admin'
+                    )
+                    db.session.add(admin)
+                    db.session.commit()
+                    print('=> Admin user created')
+            
+            print('=> Database initialized successfully')
+        except Exception as e:
+            print(f'=> Database initialization error: {e}')
+
+# Initialize the database when app starts
+init_db()
 
 # Routes --------------------------------------------------------------------
 
 @app.before_request
 def require_payment():
     """Check if user needs to go through payment gateway"""
-    if request.endpoint and request.endpoint not in ['payment_gateway', 'submit_payment', 'static', 'access_code', 'verify_access_code', 'admin_login', 'logout', 'demo']:
+    if request.endpoint and request.endpoint not in [
+        'payment_gateway', 'submit_payment', 'static', 'access_code', 
+        'verify_access_code', 'admin_login', 'logout', 'demo', 'index'
+    ]:
         if not check_access_code() and not current_user.is_authenticated:
             return redirect(url_for('demo'))
 
 @app.route('/')
 def index():
+    """Home page"""
     if not check_access_code() and not current_user.is_authenticated:
         return redirect(url_for('demo'))
     
@@ -548,159 +567,4 @@ def bulk_delete_codes():
             deleted_count += 1
     
     db.session.commit()
-    
-    flash(f'Berhasil menghapus {deleted_count} kode akses', 'success')
-    return redirect(url_for('admin_dashboard'))
 
-@app.route('/admin/bulk-action', methods=['POST'])
-@login_required
-def bulk_action():
-    if current_user.role != 'admin':
-        flash('Akses ditolak', 'danger')
-        return redirect(url_for('index'))
-    
-    code_ids = request.form.getlist('code_ids')
-    action = request.form.get('bulk_action')
-    
-    if not code_ids:
-        flash('Tidak ada kode yang dipilih', 'warning')
-        return redirect(url_for('admin_dashboard'))
-    
-    updated_count = 0
-    
-    for code_id in code_ids:
-        code = AccessCode.query.get(code_id)
-        if code:
-            if action == 'activate':
-                code.is_active = True
-                updated_count += 1
-            elif action == 'deactivate':
-                code.is_active = False
-                updated_count += 1
-            elif action == 'reset':
-                code.is_used = False
-                code.device_id = None
-                code.used_at = None
-                updated_count += 1
-            elif action == 'extend':
-                code.expires_at += timedelta(days=30)
-                updated_count += 1
-    
-    db.session.commit()
-    flash(f'Berhasil {action} {updated_count} kode akses', 'success')
-    return redirect(url_for('admin_dashboard'))
-
-# Upload handler
-@app.route('/admin/upload', methods=['POST'])
-@login_required
-def admin_upload():
-    if current_user.role != 'admin':
-        flash('Akses ditolak', 'danger')
-        return redirect(url_for('index'))
-
-    file = request.files.get('video')
-    title = request.form.get('title', 'Untitled').strip()
-    description = request.form.get('description', '').strip()
-
-    if not file:
-        flash('Pilih file video terlebih dahulu', 'danger')
-        return redirect(url_for('admin_dashboard'))
-
-    try:
-        upload_result = cloudinary.uploader.upload(
-            file,
-            resource_type='video',
-            folder='streamflix_videos'
-        )
-    except Exception as e:
-        flash('Gagal upload ke Cloudinary: ' + str(e), 'danger')
-        return redirect(url_for('admin_dashboard'))
-
-    video_url = upload_result.get('secure_url')
-    public_id = upload_result.get('public_id')
-
-    v = Video(title=title, description=description, url=video_url, public_id=public_id)
-    db.session.add(v)
-    db.session.commit()
-
-    flash('Upload berhasil', 'success')
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/search')
-def search_videos():
-    if not check_access_code() and not current_user.is_authenticated:
-        return redirect(url_for('demo'))
-    
-    query = request.args.get('q', '').strip()
-    videos = []
-    
-    if query:
-        videos = Video.query.filter(
-            db.or_(
-                Video.title.ilike(f'%{query}%'),
-                Video.description.ilike(f'%{query}%')
-            )
-        ).order_by(Video.created_at.desc()).all()
-    
-    return render_template('search.html', videos=videos, query=query, search_count=len(videos))
-
-@app.route('/api/search')
-def api_search():
-    if not check_access_code() and not current_user.is_authenticated:
-        return {'videos': []}
-    
-    query = request.args.get('q', '').strip()
-    limit = request.args.get('limit', 10, type=int)
-    
-    if query:
-        videos = Video.query.filter(
-            db.or_(
-                Video.title.ilike(f'%{query}%'),
-                Video.description.ilike(f'%{query}%')
-            )
-        ).order_by(Video.created_at.desc()).limit(limit).all()
-        
-        results = []
-        for video in videos:
-            results.append({
-                'id': video.id,
-                'title': video.title,
-                'description': video.description,
-                'url': video.url,
-                'created_at': video.created_at.strftime('%d/%m/%Y')
-            })
-        return {'videos': results}
-    
-    return {'videos': []}
-
-# Delete video
-@app.route('/admin/delete/<int:video_id>', methods=['POST'])
-@login_required
-def admin_delete(video_id):
-    if current_user.role != 'admin':
-        flash('Akses ditolak', 'danger')
-        return redirect(url_for('index'))
-
-    v = Video.query.get_or_404(video_id)
-    try:
-        if v.public_id:
-            cloudinary.uploader.destroy(v.public_id, resource_type='video')
-    except Exception as e:
-        print('Warning: cloudinary delete failed:', e)
-
-    db.session.delete(v)
-    db.session.commit()
-    flash('Video dihapus', 'success')
-    return redirect(url_for('admin_dashboard'))
-
-# Logout
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('Logout berhasil', 'info')
-    return redirect(url_for('index'))
-
-# Run
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
