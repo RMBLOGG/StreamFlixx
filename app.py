@@ -10,35 +10,21 @@ import cloudinary
 import cloudinary.uploader
 import uuid
 
-# Load .env (untuk development lokal)
+# Load .env
 load_dotenv()
 
 # Flask init
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET', 'fallback-secret-key-change-in-production')
 
-# Fix database URL for Vercel
-database_url = os.getenv('DATABASE_URL')
-if database_url and database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///app.db'
+# Gunakan SQLite untuk Vercel - lebih reliable
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_recycle': 300,
-    'pool_pre_ping': True
-}
 
-# DB init dengan error handling
-try:
-    db = SQLAlchemy(app)
-    print("=> SQLAlchemy initialized successfully")
-except Exception as e:
-    print(f"=> SQLAlchemy init error: {e}")
-    # Fallback ke SQLite untuk development
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fallback.db'
-    db = SQLAlchemy(app)
+# DB init
+db = SQLAlchemy(app)
 
-# Cloudinary config (from env)
+# Cloudinary config
 cloudinary.config(
     cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
     api_key=os.getenv('CLOUDINARY_API_KEY'),
@@ -166,17 +152,11 @@ def load_user(user_id):
 def init_db():
     with app.app_context():
         try:
-            # Test database connection first
-            db.session.execute('SELECT 1')
-            print("=> Database connection successful")
-            
-            # Create tables hanya jika belum ada
+            # Create tables jika belum ada
             db.create_all()
-            print("=> Tables created/verified")
-            
             cleanup_expired_codes()
             
-            # Create default admin user if not exists
+            # Create default admin user jika belum ada
             admin_email = os.getenv('ADMIN_EMAIL')
             admin_password = os.getenv('ADMIN_PASSWORD')
             if admin_email and admin_password:
@@ -197,7 +177,6 @@ def init_db():
             
         except Exception as e:
             print(f'=> Database initialization error: {e}')
-            # Jangan crash aplikasi jika database error
 
 # Initialize the database when app starts
 init_db()
@@ -233,7 +212,7 @@ def index():
         if not check_access_code() and not current_user.is_authenticated:
             return redirect(url_for('demo'))
         
-        videos = Video.query.order_by(Video.created_at.desc()).all() or []
+        videos = Video.query.order_by(Video.created_at.desc()).all()
         return render_template('index.html', videos=videos)
     except Exception as e:
         print(f"Error in index route: {e}")
@@ -244,7 +223,7 @@ def index():
 def demo():
     """Halaman demo untuk user yang belum membayar"""
     try:
-        videos = Video.query.order_by(Video.created_at.desc()).all() or []
+        videos = Video.query.order_by(Video.created_at.desc()).all()
         return render_template('demo.html', videos=videos)
     except Exception as e:
         print(f"Error in demo route: {e}")
@@ -391,8 +370,8 @@ def admin_dashboard():
         
         # Database queries dengan error handling
         try:
-            pending_payments = PaymentProof.query.filter_by(status='pending').order_by(PaymentProof.created_at.desc()).all() or []
-            videos = Video.query.order_by(Video.created_at.desc()).all() or []
+            pending_payments = PaymentProof.query.filter_by(status='pending').order_by(PaymentProof.created_at.desc()).all()
+            videos = Video.query.order_by(Video.created_at.desc()).all()
             
             # Get all access codes dengan pagination
             page = request.args.get('page', 1, type=int)
@@ -531,3 +510,29 @@ def reject_payment(payment_id):
         payment = PaymentProof.query.get_or_404(payment_id)
         
         if payment.status != 'pending':
+            flash('Pembayaran sudah diproses', 'warning')
+            return redirect(url_for('admin_dashboard'))
+        
+        payment.status = 'rejected'
+        db.session.commit()
+        
+        flash('Pembayaran ditolak', 'success')
+        return redirect(url_for('admin_dashboard'))
+    
+    except Exception as e:
+        print(f"Error rejecting payment: {e}")
+        db.session.rollback()
+        flash('Error rejecting payment: ' + str(e), 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+# Fitur Manajemen Kode Akses
+@app.route('/admin/generate-code', methods=['POST'])
+@login_required
+def generate_manual_code():
+    try:
+        if current_user.role != 'admin':
+            flash('Akses ditolak', 'danger')
+            return redirect(url_for('index'))
+        
+        days_valid = int(request.form.get('days', 30))
+        notes = request.form.get('notes', '').
