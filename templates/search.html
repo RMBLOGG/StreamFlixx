@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- Search Header -->
+<div class="search-header mb-5">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1 class="search-title fade-in">Hasil Pencarian</h1>
+        {% if query %}
+          <p class="search-subtitle fade-in">
+            Ditemukan <span class="badge bg-primary">{{ search_count }}</span> video untuk "<strong>{{ query }}</strong>"
+          </p>
+        {% else %}
+          <p class="search-subtitle fade-in">Masukkan kata kunci untuk mencari video</p>
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <div class="search-box fade-in">
+          <form action="{{ url_for('search_videos') }}" method="GET" class="d-flex">
+            <input type="text" name="q" class="form-control search-input-large" 
+                   placeholder="Cari video..." value="{{ query }}" required>
+            <button type="submit" class="btn btn-primary ms-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  {% if query %}
+    {% if videos %}
+      <div class="row video-grid">
+        {% for v in videos %}
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-4 fade-in">
+          <div class="content-card video-card">
+            <div class="video-thumbnail">
+              <video preload="metadata" class="thumbnail-video">
+                <source src="{{ v.url }}" type="video/mp4">
+                Your browser does not support video tag.
+              </video>
+              <div class="play-overlay">
+                <div class="play-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 5V19L19 12L8 5Z" fill="white"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="video-duration">2:45</div>
+            </div>
+            <div class="video-info">
+              <h5 class="video-title">{{ v.title }}</h5>
+              <p class="video-description">{{ v.description or 'No description available' }}</p>
+              <div class="video-meta">
+                <div class="upload-date">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="me-1">
+                    <path d="M14 0H2C0.9 0 0 0.9 0 2V14C0 15.1 0.9 16 2 16H14C15.1 16 16 15.1 16 14V2C16 0.9 15.1 0 14 0ZM14 14H2V2H14V14Z"/>
+                    <path d="M11 7H8V4C8 3.4 7.6 3 7 3C6.4 3 6 3.4 6 4V8C6 8.6 6.4 9 7 9H11C11.6 9 12 8.6 12 8C12 7.4 11.6 7 11 7Z"/>
+                  </svg>
+                  {{ v.created_at.strftime('%d/%m/%Y') }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center py-5 fade-in">
+        <div class="empty-search-state">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-3">
+            <path d="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3C5.91 3 3 5.91 3 9.5C3 13.09 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14ZM9.5 14C7.01 14 5 11.99 5 9.5C5 7.01 7.01 5 9.5 5C11.99 5 14 7.01 14 9.5C14 11.99 11.99 14 9.5 14Z" fill="#6c757d"/>
+            <path d="M10 8.5L7.5 11L6 9.5L5 10.5L7.5 13L11 9.5L10 8.5Z" fill="#6c757d"/>
+          </svg>
+          <h3 class="text-muted">Tidak ada hasil ditemukan</h3>
+          <p class="text-muted">Coba dengan kata kunci yang berbeda atau lihat <a href="{{ url_for('index') }}">semua video</a></p>
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="text-center py-5 fade-in">
+      <div class="empty-search-state">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-3">
+          <path d="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3C5.91 3 3 5.91 3 9.5C3 13.09 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14ZM9.5 14C7.01 14 5 11.99 5 9.5C5 7.01 7.01 5 9.5 5C11.99 5 14 7.01 14 9.5C14 11.99 11.99 14 9.5 14Z" fill="#6c757d"/>
+        </svg>
+        <h3 class="text-muted">Cari video favorit Anda</h3>
+        <p class="text-muted">Gunakan kolom pencarian di atas untuk menemukan video</p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .search-header {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 3rem 0;
+    border-radius: 0 0 20px 20px;
+  }
+  
+  .search-title {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  
+  .search-subtitle {
+    opacity: 0.9;
+    margin-bottom: 0;
+    font-size: 1.1rem;
+  }
+  
+  .search-input-large {
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    box-shadow: var(--shadow-light);
+  }
+  
+  .search-input-large:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  }
+  
+  .empty-search-state svg {
+    opacity: 0.5;
+  }
+  
+  /* Video Grid Styles (reuse from previous) */
+  .video-grid {
+    margin-top: 2rem;
+  }
+  
+  .content-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-light);
+  }
+  
+  .content-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-medium);
+  }
+  
+  .video-thumbnail {
+    position: relative;
+    overflow: hidden;
+    background-color: #000;
+    aspect-ratio: 16 / 9;
+  }
+  
+  .thumbnail-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  
+  .video-thumbnail:hover .thumbnail-video {
+    transform: scale(1.05);
+  }
+  
+  .play-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .video-thumbnail:hover .play-overlay {
+    opacity: 1;
+  }
+  
+  .play-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(13, 110, 253, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+  }
+  
+  .video-thumbnail:hover .play-icon {
+    transform: scale(1);
+  }
+  
+  .video-info {
+    padding: 1.25rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .video-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--dark-color);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .video-description {
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .video-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+  }
+  
+  .upload-date {
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Animation */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .fade-in {
+    animation: fadeInUp 0.6s ease forwards;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .search-header {
+      padding: 2rem 0;
+    }
+    
+    .search-title {
+      font-size: 1.8rem;
+    }
+    
+    .search-subtitle {
+      font-size: 1rem;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add staggered animation for search results
+    const fadeElements = document.querySelectorAll('.fade-in');
+    
+    fadeElements.forEach((element, index) => {
+      element.style.animationDelay = `${index * 0.1}s`;
+    });
+    
+    // Focus on search input when page loads if no query
+    {% if not query %}
+    const searchInput = document.querySelector('.search-input-large');
+    if (searchInput) {
+      searchInput.focus();
+    }
+    {% endif %}
+  });
+</script>
+{% endblock %}

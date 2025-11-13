@@ -1,1 +1,715 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+  <div class="container">
+    <div class="hero-content text-center">
+      <h1 class="hero-title">Welcome to StreamFlix</h1>
+      <p class="hero-subtitle">Discover amazing videos and exclusive content</p>
+      
+      {% if not current_user.is_authenticated and not check_access_code() %}
+      <div class="hero-actions">
+        <a href="{{ url_for('payment_gateway') }}" class="btn btn-primary btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="me-2">
+            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.9 1 3 1.9 3 3V21C3 22.1 3.9 23 5 23H19C20.1 23 21 22.1 21 21V9ZM19 9H14V4L19 9Z"/>
+          </svg>
+          Subscribe Now
+        </a>
+        <a href="{{ url_for('access_code') }}" class="btn btn-outline-light btn-lg ms-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="me-2">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          Enter Access Code
+        </a>
+      </div>
+      {% else %}
+      <div class="alert alert-success d-inline-flex align-items-center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="me-2">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        Premium Access Active - Enjoy Full Content!
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
 
+<!-- Video Grid -->
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="section-title">
+      {% if not current_user.is_authenticated and not check_access_code() %}
+      Featured Videos (Preview)
+      {% else %}
+      Trending Now
+      {% endif %}
+    </h2>
+    <div class="filter-options">
+      <button class="btn btn-filter active" data-filter="all">All</button>
+      <button class="btn btn-filter" data-filter="recent">Recent</button>
+      <button class="btn btn-filter" data-filter="popular">Popular</button>
+    </div>
+  </div>
+
+  <div class="row video-grid">
+    {% for v in videos %}
+    <div class="col-xl-3 col-lg-4 col-md-6 mb-4 fade-in">
+      <div class="content-card video-card">
+        <div class="video-thumbnail {% if not current_user.is_authenticated and not check_access_code() %}demo-thumbnail{% endif %}">
+          <video preload="metadata" class="thumbnail-video" 
+                 {% if not current_user.is_authenticated and not check_access_code() %}poster="{{ url_for('static', filename='img/thumbnail-blur.jpg') }}"{% endif %}>
+            <source src="{{ v.url }}" type="video/mp4">
+            Your browser does not support video tag.
+          </video>
+          
+          {% if not current_user.is_authenticated and not check_access_code() %}
+          <!-- Demo Overlay for non-subscribers -->
+          <div class="demo-overlay">
+            <div class="demo-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="me-1">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+              </svg>
+              PREVIEW
+            </div>
+            <div class="lock-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+              </svg>
+            </div>
+          </div>
+          {% endif %}
+          
+          <div class="play-overlay">
+            <div class="play-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 5V19L19 12L8 5Z" fill="white"/>
+              </svg>
+            </div>
+          </div>
+          <div class="video-duration">
+            {% if not current_user.is_authenticated and not check_access_code() %}
+            Subscribe to watch full video
+            {% else %}
+            Klik gambar ini untuk menonton
+            {% endif %}
+          </div>
+        </div>
+        <div class="video-info">
+          <h5 class="video-title">{{ v.title }}</h5>
+          <p class="video-description">{{ v.description or 'No description available' }}</p>
+          <div class="video-meta">
+            <div class="upload-date">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="me-1">
+                <path d="M14 0H2C0.9 0 0 0.9 0 2V14C0 15.1 0.9 16 2 16H14C15.1 16 16 15.1 16 14V2C16 0.9 15.1 0 14 0ZM14 14H2V2H14V14Z"/>
+                <path d="M11 7H8V4C8 3.4 7.6 3 7 3C6.4 3 6 3.4 6 4V8C6 8.6 6.4 9 7 9H11C11.6 9 12 8.6 12 8C12 7.4 11.6 7 11 7Z"/>
+              </svg>
+              {{ v.created_at.strftime('%d/%m/%Y') }}
+            </div>
+            <div class="view-count">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="me-1">
+                <path d="M8 2C4.7 2 2 4.7 2 8C2 11.3 4.7 14 8 14C11.3 14 14 11.3 14 8C14 4.7 11.3 2 8 2ZM8 12.5C5.5 12.5 3.5 10.5 3.5 8C3.5 5.5 5.5 3.5 8 3.5C10.5 3.5 12.5 5.5 12.5 8C12.5 10.5 10.5 12.5 8 12.5Z"/>
+                <path d="M8 4.5C6.1 4.5 4.5 6.1 4.5 8C4.5 9.9 6.1 11.5 8 11.5C9.9 11.5 11.5 9.9 11.5 8C11.5 6.1 9.9 4.5 8 4.5Z"/>
+              </svg>
+              1.2K
+            </div>
+          </div>
+          
+          {% if not current_user.is_authenticated and not check_access_code() %}
+          <div class="demo-actions mt-3">
+            <button class="btn btn-outline-primary btn-sm w-100" onclick="showPreview('{{ v.url }}', '{{ v.title }}', '{{ v.description }}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="me-1">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              Preview (30s)
+            </button>
+          </div>
+          {% else %}
+          <div class="video-actions mt-3">
+            <button class="btn btn-primary btn-sm w-100" onclick="playVideo('{{ v.url }}', '{{ v.title }}', '{{ v.description }}', '{{ v.created_at.strftime('%d/%m/%Y') }}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="me-1">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              Watch Full Video
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5 fade-in">
+      <div class="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-3">
+          <path d="M18 7L16.59 5.59L10.25 11.93L11.66 13.34L18 7ZM22 12C22 17.52 17.52 22 12 22C6.48 22 2 17.52 2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12ZM20 12C20 7.58 16.42 4 12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C16.42 20 20 16.42 20 12Z" fill="currentColor"/>
+        </svg>
+        <h3 class="text-muted">No Videos Available</h3>
+        <p class="text-muted">Check back later for new content</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Video Modal for Full Access -->
+<div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 id="modalVideoTitle" class="mb-2"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <video id="modalVideo" controls class="w-100"
+               controlsList="nodownload noplaybackrate" disablePictureInPicture
+               oncontextmenu="return false">
+          <source src="" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-details mt-3">
+          <h6 id="modalVideoTitle" class="mb-2"></h6>
+          <p id="modalVideoDescription" class="text-muted"></p>
+          <div class="d-flex justify-content-between text-muted small">
+            <span id="modalVideoDate"></span>
+            <span id="modalVideoViews"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal for Demo Users -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Preview - <span id="previewTitle"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div class="preview-container">
+          <video id="previewVideo" controls class="w-100" style="max-height: 60vh;">
+            Your browser does not support the video tag.
+          </video>
+          <div class="preview-overlay">
+            <div class="preview-message">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" class="mb-3">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+              </svg>
+              <h5>Video Terkunci</h5>
+              <p class="mb-3">Preview berakhir. Lakukan pembayaran untuk menonton video lengkap</p>
+              <div class="d-grid gap-2">
+                <a href="{{ url_for('payment_gateway') }}" class="btn btn-primary">
+                  Bayar Sekarang
+                </a>
+                <a href="{{ url_for('access_code') }}" class="btn btn-outline-primary">
+                  Masukkan Kode Akses
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-info mt-3">
+          <h6 id="previewInfoTitle" class="mb-2"></h6>
+          <p id="previewInfoDescription" class="text-muted small"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Modern CSS Variables */
+  :root {
+    --primary-color: #4361ee;
+    --primary-light: #4895ef;
+    --secondary-color: #3f37c9;
+    --accent-color: #f72585;
+    --dark-color: #1e1e2c;
+    --light-color: #f8f9fa;
+    --gray-color: #6c757d;
+    --gradient-primary: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+    --gradient-accent: linear-gradient(135deg, #f72585 0%, #b5179e 100%);
+    --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-medium: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --shadow-heavy: 0 16px 48px rgba(0, 0, 0, 0.15);
+    --border-radius: 12px;
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  
+  /* Nonaktifkan tombol download di berbagai browser */
+video::-webkit-media-controls-download-button {
+    display: none !important;
+}
+
+video::-webkit-media-controls-overflow-button {
+    display: none !important;
+}
+
+video::-webkit-media-controls-picture-in-picture-button {
+    display: none !important;
+}
+
+/* Untuk Firefox */
+video::-moz-media-controls-download-button {
+    display: none !important;
+}
+
+/* Prevent right-click context menu on videos */
+video {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+  /* Hero Section */
+  .hero-section {
+    background: var(--gradient-primary);
+    padding: 5rem 0 3rem;
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    z-index: 0;
+  }
+  
+  .hero-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.25rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Search Bar */
+  .search-container {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    margin: 2rem auto 0;
+    z-index: 1;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.8);
+    z-index: 2;
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 16px 16px 16px 50px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    color: white;
+    transition: var(--transition);
+  }
+  
+  .search-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .search-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Video Grid Styles */
+  .section-title {
+    font-weight: 700;
+    color: var(--dark-color);
+    position: relative;
+    padding-bottom: 0.5rem;
+    font-size: 1.75rem;
+  }
+  
+  .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 50px;
+    height: 4px;
+    background: var(--gradient-primary);
+    border-radius: 2px;
+  }
+  
+  /* Filter Buttons */
+  .filter-options {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .btn-filter {
+    padding: 8px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    background: white;
+    color: var(--gray-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: var(--transition);
+  }
+  
+  .btn-filter:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-light);
+  }
+  
+  .btn-filter.active {
+    background: var(--gradient-primary);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: var(--shadow-medium);
+  }
+  
+  /* Video Card Styles */
+  .video-card {
+    background: white;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: var(--transition);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-light);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+  
+  .video-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-heavy);
+  }
+  
+  .video-thumbnail {
+    position: relative;
+    overflow: hidden;
+    background-color: #000;
+    aspect-ratio: 16 / 9;
+  }
+  
+  .thumbnail-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  
+  .video-thumbnail:hover .thumbnail-video {
+    transform: scale(1.05);
+  }
+  
+  .play-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .video-thumbnail:hover .play-overlay {
+    opacity: 1;
+  }
+  
+  .play-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(67, 97, 238, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .video-thumbnail:hover .play-icon {
+    transform: scale(1);
+  }
+  
+  .video-duration {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+  }
+  
+  .video-info {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .video-title {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--dark-color);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 1.1rem;
+  }
+  
+  .video-description {
+    color: var(--gray-color);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .video-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--gray-color);
+    margin-top: auto;
+  }
+  
+  .upload-date, .view-count {
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Empty State */
+  .empty-state {
+    padding: 3rem 1rem;
+  }
+  
+  .empty-state svg {
+    color: #dee2e6;
+  }
+  
+  /* Modal Styles */
+  .modal-content {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-heavy);
+  }
+  
+  .modal-header {
+    background: var(--gradient-primary);
+    color: white;
+    border-bottom: none;
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .modal-title {
+    font-weight: 600;
+  }
+  
+  .btn-close {
+    filter: invert(1);
+    opacity: 0.8;
+  }
+  
+  .btn-close:hover {
+    opacity: 1;
+  }
+  
+  .modal-body {
+    padding: 0;
+  }
+  
+  .modal-body video {
+    border-radius: 0;
+  }
+  
+  .video-details {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  /* Animation for cards */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .fade-in {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease forwards;
+  }
+  
+  /* Stagger animation for grid items */
+  .video-grid .fade-in:nth-child(1) { animation-delay: 0.1s; }
+  .video-grid .fade-in:nth-child(2) { animation-delay: 0.2s; }
+  .video-grid .fade-in:nth-child(3) { animation-delay: 0.3s; }
+  .video-grid .fade-in:nth-child(4) { animation-delay: 0.4s; }
+  .video-grid .fade-in:nth-child(5) { animation-delay: 0.5s; }
+  .video-grid .fade-in:nth-child(6) { animation-delay: 0.6s; }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 2.5rem;
+    }
+    
+    .hero-subtitle {
+      font-size: 1.1rem;
+    }
+    
+    .filter-options {
+      display: flex;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      gap: 0.25rem;
+    }
+    
+    .btn-filter {
+      white-space: nowrap;
+      font-size: 0.8rem;
+      padding: 6px 12px;
+    }
+    
+    .video-info {
+      padding: 1rem;
+    }
+    
+    .section-title {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Video card click handler
+    const videoCards = document.querySelectorAll('.video-card');
+    const videoModal = new bootstrap.Modal(document.getElementById('videoModal'));
+    
+    videoCards.forEach(card => {
+      card.addEventListener('click', function() {
+        const videoSrc = this.querySelector('source').src;
+        const videoTitle = this.querySelector('.video-title').textContent;
+        const videoDescription = this.querySelector('.video-description').textContent;
+        const videoDate = this.querySelector('.upload-date').textContent;
+        const videoViews = this.querySelector('.view-count').textContent;
+        
+        // Set modal content
+        document.getElementById('modalVideoTitle').textContent = videoTitle;
+        document.getElementById('modalVideoDescription').textContent = videoDescription;
+        document.getElementById('modalVideoDate').textContent = videoDate;
+        document.getElementById('modalVideoViews').textContent = videoViews;
+        
+        // Set video source
+        const modalVideo = document.getElementById('modalVideo');
+        modalVideo.querySelector('source').src = videoSrc;
+        modalVideo.load();
+        
+        // Show modal
+        videoModal.show();
+      });
+    });
+    
+    // Filter buttons functionality
+    const filterButtons = document.querySelectorAll('.btn-filter');
+    
+    filterButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        // Remove active class from all buttons
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        
+        // Add active class to clicked button
+        this.classList.add('active');
+        
+        // Get filter value
+        const filter = this.getAttribute('data-filter');
+        
+        // In a real app, you would filter videos here
+        // For demo purposes, we'll just show a message
+        console.log(`Filtering by: ${filter}`);
+      });
+    });
+    
+    // Reset modal video when closed
+    document.getElementById('videoModal').addEventListener('hidden.bs.modal', function() {
+      const modalVideo = document.getElementById('modalVideo');
+      modalVideo.pause();
+      modalVideo.currentTime = 0;
+    });
+    
+    // Search functionality
+    const searchInput = document.querySelector('.search-input');
+    searchInput.addEventListener('input', function() {
+      const searchTerm = this.value.toLowerCase();
+      const videoCards = document.querySelectorAll('.video-card');
+      
+      videoCards.forEach(card => {
+        const title = card.querySelector('.video-title').textContent.toLowerCase();
+        const description = card.querySelector('.video-description').textContent.toLowerCase();
+        
+        if (title.includes(searchTerm) || description.includes(searchTerm)) {
+          card.closest('.col-xl-3').style.display = 'block';
+        } else {
+          card.closest('.col-xl-3').style.display = 'none';
+        }
+      });
+    });
+    
+    // Add subtle parallax effect to hero section
+    window.addEventListener('scroll', function() {
+      const scrolled = window.pageYOffset;
+      const hero = document.querySelector('.hero-section');
+      hero.style.transform = `translateY(${scrolled * 0.3}px)`;
+    });
+  });
+</script>
+{% endblock %}

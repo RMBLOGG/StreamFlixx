@@ -1,0 +1,1122 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- Admin Dashboard Header -->
+<div class="dashboard-header mb-5">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1 class="dashboard-title fade-in">Admin Dashboard</h1>
+        <p class="dashboard-subtitle fade-in">Kelola konten video dan platform Anda</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <div class="stats-card fade-in">
+          <div class="stats-icon">
+            <i class="fas fa-video"></i>
+          </div>
+          <div class="stats-content">
+            <h3>{{ videos|length }}</h3>
+            <p>Total Video</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <!-- Upload Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="admin-card upload-card fade-in">
+        <div class="card-header">
+          <div class="header-icon">
+            <i class="fas fa-cloud-upload-alt"></i>
+          </div>
+          <h5 class="card-title">Upload Video Baru</h5>
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('admin_upload') }}" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+            <div class="form-group mb-3">
+              <label class="form-label">Judul Video</label>
+              <input type="text" name="title" class="form-control modern-input" placeholder="Masukkan judul video" required>
+            </div>
+            
+            <div class="form-group mb-3">
+              <label class="form-label">Deskripsi</label>
+              <textarea name="description" class="form-control modern-textarea" placeholder="Masukkan deskripsi video" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group mb-3">
+              <label class="form-label">Pilih File Video</label>
+              <div class="file-upload-area" id="fileUploadArea">
+                <div class="upload-placeholder">
+                  <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                  <p class="upload-text">Klik untuk memilih atau drag and drop</p>
+                  <p class="upload-subtext">MP4, MOV, AVI hingga 500MB</p>
+                </div>
+                <input type="file" name="video" class="file-input" accept="video/*" required>
+                <div class="file-info" id="fileInfo"></div>
+              </div>
+            </div>
+            
+            <div class="upload-progress mb-3" id="uploadProgress" style="display: none;">
+              <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+              <div class="progress-text" id="progressText">Mengunggah... 0%</div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-upload w-100" id="uploadButton">
+              <span class="btn-text">Upload Video</span>
+              <div class="btn-loader" style="display: none;">
+                <div class="spinner"></div>
+              </div>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+        <div class="col-lg-12">
+      <div class="admin-card codes-card fade-in">
+        <div class="card-header">
+          <div class="header-icon">
+            <i class="fas fa-key"></i>
+          </div>
+          <h5 class="card-title">Manajemen Kode Akses</h5>
+          <div class="header-stats">
+            <span class="stat-item">Total: {{ total_codes }}</span>
+            <span class="stat-item">Aktif: {{ active_codes }}</span>
+            <span class="stat-item">Terpakai: {{ used_codes }}</span>
+            <span class="stat-item">Kadaluarsa: {{ expired_codes }}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Toolbar -->
+          <div class="codes-toolbar mb-4">
+            <div class="row align-items-center">
+              <div class="col-md-6">
+                <form method="GET" class="codes-filter">
+                  <div class="input-group">
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                      <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Semua Status</option>
+                      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Aktif</option>
+                      <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Nonaktif</option>
+                      <option value="used" {% if status_filter == 'used' %}selected{% endif %}>Terpakai</option>
+                      <option value="unused" {% if status_filter == 'unused' %}selected{% endif %}>Belum Dipakai</option>
+                      <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Kadaluarsa</option>
+                    </select>
+                    <input type="text" name="search" value="{{ search_query }}" placeholder="Cari kode..." class="form-control">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                  </div>
+                </form>
+              </div>
+              <div class="col-md-6 text-end">
+                <div class="d-flex justify-content-end gap-2">
+                  <button class="btn btn-success" onclick="openGenerateModal()">
+                    <i class="fas fa-plus me-1"></i>
+                    Generate Kode
+                  </button>
+                  <div class="bulk-actions" id="bulkActions" style="display: none;">
+                    <select class="form-select me-2" id="bulkActionSelect" style="width: auto;">
+                      <option value="">Pilih Aksi</option>
+                      <option value="activate">Aktifkan</option>
+                      <option value="deactivate">Nonaktifkan</option>
+                      <option value="reset">Reset Penggunaan</option>
+                      <option value="extend">Perpanjang 30 Hari</option>
+                      <option value="delete">Hapus</option>
+                    </select>
+                    <button class="btn btn-danger" onclick="executeBulkAction()">Terapkan</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Codes Table -->
+          <div class="codes-table-container">
+            <form id="bulkForm" action="{{ url_for('bulk_action') }}" method="POST">
+              <div class="table-responsive">
+                <table class="table table-hover codes-table">
+                  <thead class="table-light">
+                    <tr>
+                      <th width="30">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                      </th>
+                      <th>Kode</th>
+                      <th>Status</th>
+                      <th>Digunakan</th>
+                      <th>Device ID</th>
+                      <th>Kadaluarsa</th>
+                      <th>Catatan</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for code in access_codes.items %}
+                    <tr class="code-item {% if not code.is_active %}table-warning{% endif %} {% if code.expires_at < current_time %}table-danger{% endif %}">
+                      <td>
+                        <input type="checkbox" name="code_ids" value="{{ code.id }}" class="code-checkbox" onchange="updateBulkActions()">
+                      </td>
+                      <td class="code-value">
+                        <strong>{{ code.code }}</strong>
+                        {% if code.notes %}
+                        <br><small class="text-muted">{{ code.notes }}</small>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <span class="badge {% if code.is_active %}bg-success{% else %}bg-warning{% endif %}">
+                          {% if code.is_active %}Aktif{% else %}Nonaktif{% endif %}
+                        </span>
+                      </td>
+                      <td>
+                        {% if code.is_used %}
+                        <span class="badge bg-info">Terpakai</span>
+                        <br><small>{{ code.used_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                        {% else %}
+                        <span class="badge bg-secondary">Belum</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if code.device_id %}
+                        <code class="device-id" title="{{ code.device_id }}">{{ code.device_id[:8] }}...</code>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <span class="{% if code.expires_at < current_time %}text-danger fw-bold{% endif %}">
+                          {{ code.expires_at.strftime('%d/%m/%Y %H:%M') }}
+                        </span>
+                        {% if code.expires_at < current_time %}
+                        <br><small class="text-danger">Kadaluarsa</small>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if code.notes %}
+                        <span class="code-notes">{{ code.notes }}</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <div class="code-actions">
+                          {% if code.is_active %}
+                          <form action="{{ url_for('deactivate_code', code_id=code.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-warning btn-sm" title="Nonaktifkan">
+                              <i class="fas fa-ban"></i>
+                            </button>
+                          </form>
+                          {% else %}
+                          <form action="{{ url_for('activate_code', code_id=code.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-success btn-sm" title="Aktifkan">
+                              <i class="fas fa-check"></i>
+                            </button>
+                          </form>
+                          {% endif %}
+                          
+                          {% if code.is_used %}
+                          <form action="{{ url_for('reset_code', code_id=code.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-info btn-sm" title="Reset Penggunaan">
+                              <i class="fas fa-redo"></i>
+                            </button>
+                          </form>
+                          {% endif %}
+                          
+                          <form action="{{ url_for('extend_code', code_id=code.id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="days" value="30">
+                            <button type="submit" class="btn btn-primary btn-sm" title="Perpanjang 30 Hari">
+                              <i class="fas fa-calendar-plus"></i>
+                            </button>
+                          </form>
+                          
+                          <button class="btn btn-secondary btn-sm" onclick="openNotesModal({{ code.id }}, '{{ code.code }}', '{{ code.notes or '' }}')" title="Edit Catatan">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          
+                          <form action="{{ url_for('delete_code', code_id=code.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Hapus" onclick="return confirm('Hapus kode {{ code.code }}?')">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                      <td colspan="8" class="text-center py-4">
+                        <div class="empty-state">
+                          <i class="fas fa-key text-muted mb-3" style="font-size: 3rem;"></i>
+                          <p class="text-muted">Tidak ada kode akses ditemukan</p>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </form>
+
+            <!-- Pagination -->
+            {% if access_codes.pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-4">
+              <ul class="pagination justify-content-center">
+                {% if access_codes.has_prev %}
+                <li class="page-item">
+                  <a class="page-link" href="{{ url_for('admin_dashboard', page=access_codes.prev_num, status=status_filter, search=search_query) }}">‹</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in access_codes.iter_pages() %}
+                  {% if page_num %}
+                    <li class="page-item {% if page_num == access_codes.page %}active{% endif %}">
+                      <a class="page-link" href="{{ url_for('admin_dashboard', page=page_num, status=status_filter, search=search_query) }}">{{ page_num }}</a>
+                    </li>
+                  {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  {% endif %}
+                {% endfor %}
+                
+                {% if access_codes.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="{{ url_for('admin_dashboard', page=access_codes.next_num, status=status_filter, search=search_query) }}">›</a>
+                </li>
+                {% endif %}
+              </ul>
+            </nav>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+    <!-- Payment Verification Section -->
+    <div class="col-lg-6 mb-4">
+      <div class="admin-card payments-card fade-in">
+        <div class="card-header">
+          <div class="header-icon">
+            <i class="fas fa-receipt"></i>
+          </div>
+          <h5 class="card-title">Verifikasi Pembayaran</h5>
+          <span class="badge bg-warning">{{ pending_payments|length }} Pending</span>
+        </div>
+        <div class="card-body">
+          {% if pending_payments %}
+          <div class="payments-list">
+            {% for payment in pending_payments %}
+            <div class="payment-item">
+              <div class="payment-info">
+                <h6>{{ payment.user_name }}</h6>
+                <p class="mb-1">{{ payment.user_email }} | {{ payment.user_phone }}</p>
+                <p class="mb-1">{{ payment.payment_method|upper }} - Rp {{ "{:,}".format(payment.payment_amount) }}</p>
+                <small class="text-muted">{{ payment.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+              </div>
+              <div class="payment-proof">
+                <img src="{{ payment.proof_image }}" alt="Proof" class="proof-image" data-bs-toggle="modal" data-bs-target="#proofModal{{ payment.id }}">
+              </div>
+              <div class="payment-actions">
+                <form action="{{ url_for('approve_payment', payment_id=payment.id) }}" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i> Approve</button>
+                </form>
+                <form action="{{ url_for('reject_payment', payment_id=payment.id) }}" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times me-1"></i> Reject</button>
+                </form>
+              </div>
+              
+              <!-- Modal for proof image -->
+              <div class="modal fade" id="proofModal{{ payment.id }}" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Bukti Pembayaran - {{ payment.user_name }}</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                      <img src="{{ payment.proof_image }}" alt="Proof" class="img-fluid">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-3">
+            <i class="fas fa-check-circle text-muted mb-2" style="font-size: 2rem;"></i>
+            <p class="text-muted">Tidak ada pembayaran pending</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Videos List Section - DIKOREKSI -->
+    <div class="col-lg-6 mb-4">
+      <div class="admin-card videos-card fade-in">
+        <div class="card-header">
+          <div class="header-icon">
+            <i class="fas fa-play-circle"></i>
+          </div>
+          <h5 class="card-title">Kelola Video</h5>
+          <span class="badge bg-primary">{{ videos|length }}</span>
+        </div>
+        <div class="card-body">
+          {% if videos %}
+          <div class="videos-list">
+            {% for v in videos %}
+            <div class="video-item" data-video-id="{{ v.id }}">
+              <div class="video-info">
+                <h6 class="video-title">{{ v.title }}</h6>
+                <p class="video-description">{{ v.description or 'Tidak ada deskripsi' }}</p>
+                <div class="video-meta">
+                  <span class="upload-date">
+                    <i class="fas fa-calendar-alt me-1"></i>
+                    {{ v.created_at.strftime('%d/%m/%Y %H:%M') }}
+                  </span>
+                </div>
+              </div>
+              <div class="video-actions">
+                <!-- Tombol Preview Video -->
+                <button class="btn btn-primary btn-sm btn-preview" 
+                        data-video-url="{{ v.url }}" 
+                        data-video-title="{{ v.title }}"
+                        title="Preview Video">
+                  <i class="fas fa-eye me-1"></i> Lihat
+                </button>
+                
+                <!-- Tombol Delete Video - DIKOREKSI -->
+                <button class="btn btn-danger btn-sm btn-delete" 
+                        data-video-title="{{ v.title }}"
+                        data-video-id="{{ v.id }}"
+                        title="Hapus Video">
+                  <i class="fas fa-trash me-1"></i> Hapus
+                </button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state text-center py-4">
+            <i class="fas fa-video-slash text-muted mb-3" style="font-size: 3rem;"></i>
+            <h5 class="text-muted">Belum Ada Video</h5>
+            <p class="text-muted">Upload video pertama Anda untuk memulai</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Access Codes Management Section -->
+
+<!-- Generate Code Modal -->
+<div class="modal fade" id="generateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Generate Kode Akses Baru</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form action="{{ url_for('generate_manual_code') }}" method="POST">
+          <div class="mb-3">
+            <label class="form-label">Masa Berlaku (hari)</label>
+            <input type="number" name="days" class="form-control" value="30" min="1" max="365" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Catatan (opsional)</label>
+            <textarea name="notes" class="form-control" placeholder="Tambahkan catatan untuk kode ini..." rows="3"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary">Generate Kode</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Notes Modal -->
+<div class="modal fade" id="notesModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="notesModalTitle">Edit Catatan Kode</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="notesForm" method="POST">
+          <div class="mb-3">
+            <label class="form-label">Catatan</label>
+            <textarea name="notes" class="form-control" placeholder="Tambahkan catatan..." rows="3" id="notesTextarea"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Video Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalTitle">Video Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <video controls class="preview-video w-100">
+          <source src="" type="video/mp4">
+          Browser Anda tidak mendukung pemutaran video.
+        </video>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Hapus</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Apakah Anda yakin ingin menghapus "<span id="deleteVideoTitle"></span>"?</p>
+        <p class="text-danger"><small>Tindakan ini tidak dapat dibatalkan.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <form action="" method="post" id="deleteForm">
+          <button type="submit" class="btn btn-danger">Hapus Video</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Modern Dashboard Styles */
+:root {
+  --primary: #4361ee;
+  --primary-dark: #3a56d4;
+  --secondary: #7209b7;
+  --success: #4cc9f0;
+  --warning: #f72585;
+  --danger: #e63946;
+  --light: #f8f9fa;
+  --dark: #212529;
+  --gray: #6c757d;
+  --border-radius: 12px;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --transition: all 0.3s ease;
+}
+
+body {
+  background-color: #f5f7fb;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboard-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  padding: 2rem 0;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-subtitle {
+  opacity: 0.9;
+  margin-bottom: 0;
+}
+
+.stats-card {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-icon {
+  margin-right: 1rem;
+  font-size: 1.5rem;
+  opacity: 0.9;
+}
+
+.stats-content h3 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.stats-content p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.admin-card {
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  border: none;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.admin-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: white;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.header-icon {
+  margin-right: 0.75rem;
+  color: var(--primary);
+  font-size: 1.25rem;
+}
+
+.card-title {
+  margin: 0;
+  font-weight: 600;
+  flex-grow: 1;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Form Styles */
+.form-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--dark);
+}
+
+.modern-input, .modern-textarea {
+  border-radius: 8px;
+  border: 1px solid #e1e5e9;
+  padding: 0.75rem;
+  transition: var(--transition);
+}
+
+.modern-input:focus, .modern-textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+}
+
+.file-upload-area {
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  position: relative;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.file-upload-area:hover {
+  border-color: var(--primary);
+  background-color: rgba(67, 97, 238, 0.03);
+}
+
+.upload-placeholder {
+  pointer-events: none;
+}
+
+.upload-icon {
+  font-size: 2.5rem;
+  color: var(--gray);
+  margin-bottom: 1rem;
+}
+
+.upload-text {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.upload-subtext {
+  color: var(--gray);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.file-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-info {
+  display: none;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--light);
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.upload-progress {
+  margin-top: 1rem;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.btn-upload {
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Payment Section */
+.payment-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #f1f3f4;
+  transition: var(--transition);
+}
+
+.payment-item:hover {
+  background-color: #f8f9fa;
+}
+
+.payment-item:last-child {
+  border-bottom: none;
+}
+
+.payment-info {
+  flex-grow: 1;
+}
+
+.payment-info h6 {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.payment-proof {
+  margin: 0 1rem;
+}
+
+.proof-image {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.proof-image:hover {
+  transform: scale(1.05);
+}
+
+.payment-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Videos Section - DIKOREKSI */
+.video-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #f1f3f4;
+  transition: var(--transition);
+}
+
+.video-item:hover {
+  background-color: #f8f9fa;
+}
+
+.video-item:last-child {
+  border-bottom: none;
+}
+
+.video-info {
+  flex-grow: 1;
+}
+
+.video-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.video-description {
+  color: var(--gray);
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.video-meta {
+  font-size: 0.75rem;
+  color: var(--gray);
+}
+
+.video-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Codes Section */
+.codes-toolbar {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1.5rem;
+}
+
+.header-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.device-id {
+  font-family: 'Courier New', monospace;
+  background: #f8f9fa;
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.code-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.code-actions form {
+  margin: 0;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.code-item:hover {
+  background-color: #f8f9fa !important;
+}
+
+/* Modal Styles */
+.modal-content {
+  border-radius: var(--border-radius);
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 1rem 1.5rem;
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 1.5rem 0;
+  }
+  
+  .stats-card {
+    margin-top: 1rem;
+  }
+  
+  .codes-toolbar .row {
+    gap: 1rem;
+  }
+  
+  .codes-toolbar .col-md-6 {
+    width: 100%;
+  }
+  
+  .header-stats {
+    justify-content: center;
+    margin-top: 1rem;
+  }
+  
+  .code-actions {
+    flex-direction: column;
+  }
+  
+  .bulk-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .bulk-actions select {
+    width: 100% !important;
+  }
+  
+  .payment-item, .video-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .payment-proof, .payment-actions, .video-actions {
+    margin: 0.5rem 0 0;
+    width: 100%;
+  }
+  
+  .payment-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 576px) {
+  .stat-item {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .codes-table {
+    font-size: 0.8rem;
+  }
+  
+  .code-actions .btn {
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .header-icon, .badge {
+    margin-bottom: 0.5rem;
+  }
+}
+</style>
+
+<script>
+// Modal Functions
+function openGenerateModal() {
+  var generateModal = new bootstrap.Modal(document.getElementById('generateModal'));
+  generateModal.show();
+}
+
+function openNotesModal(codeId, code, currentNotes) {
+  document.getElementById('notesModalTitle').textContent = `Edit Catatan - ${code}`;
+  document.getElementById('notesTextarea').value = currentNotes || '';
+  
+  const form = document.getElementById('notesForm');
+  form.action = `/admin/update-code-notes/${codeId}`;
+  
+  var notesModal = new bootstrap.Modal(document.getElementById('notesModal'));
+  notesModal.show();
+}
+
+// Bulk Actions
+function toggleSelectAll(checkbox) {
+  const checkboxes = document.querySelectorAll('.code-checkbox');
+  checkboxes.forEach(cb => cb.checked = checkbox.checked);
+  updateBulkActions();
+}
+
+function updateBulkActions() {
+  const checkedBoxes = document.querySelectorAll('.code-checkbox:checked');
+  const bulkActions = document.getElementById('bulkActions');
+  
+  if (checkedBoxes.length > 0) {
+    bulkActions.style.display = 'flex';
+  } else {
+    bulkActions.style.display = 'none';
+  }
+}
+
+function executeBulkAction() {
+  const action = document.getElementById('bulkActionSelect').value;
+  const form = document.getElementById('bulkForm');
+  
+  if (!action) {
+    alert('Pilih aksi terlebih dahulu');
+    return;
+  }
+  
+  const checkedBoxes = document.querySelectorAll('.code-checkbox:checked');
+  if (checkedBoxes.length === 0) {
+    alert('Tidak ada kode yang dipilih');
+    return;
+  }
+  
+  if (action === 'delete') {
+    if (!confirm(`Hapus ${checkedBoxes.length} kode yang dipilih?`)) {
+      return;
+    }
+    form.action = "{{ url_for('bulk_delete_codes') }}";
+  } else {
+    let actionInput = form.querySelector('input[name="bulk_action"]');
+    if (!actionInput) {
+      actionInput = document.createElement('input');
+      actionInput.type = 'hidden';
+      actionInput.name = 'bulk_action';
+      form.appendChild(actionInput);
+    }
+    actionInput.value = action;
+    form.action = "{{ url_for('bulk_action') }}";
+  }
+  
+  form.submit();
+}
+
+// File upload handling
+document.addEventListener('DOMContentLoaded', function() {
+  const fileUploadArea = document.getElementById('fileUploadArea');
+  const fileInput = fileUploadArea.querySelector('.file-input');
+  const fileInfo = document.getElementById('fileInfo');
+  
+  fileInput.addEventListener('change', function(e) {
+    if (this.files.length > 0) {
+      const file = this.files[0];
+      displayFileInfo(file);
+    }
+  });
+  
+  function displayFileInfo(file) {
+    const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+    fileInfo.innerHTML = `<strong>${file.name}</strong> (${fileSize} MB)`;
+    fileInfo.style.display = 'block';
+  }
+  
+  // Video preview modal - DIKOREKSI
+  const previewButtons = document.querySelectorAll('.btn-preview');
+  previewButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const videoUrl = this.getAttribute('data-video-url');
+      const videoTitle = this.getAttribute('data-video-title');
+      
+      document.getElementById('previewModalTitle').textContent = videoTitle;
+      const videoElement = document.querySelector('.preview-video');
+      videoElement.querySelector('source').src = videoUrl;
+      videoElement.load();
+      
+      const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+      previewModal.show();
+    });
+  });
+  
+  // Delete confirmation modal - DIKOREKSI
+  const deleteButtons = document.querySelectorAll('.btn-delete');
+  deleteButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const videoTitle = this.getAttribute('data-video-title');
+      const videoId = this.getAttribute('data-video-id');
+      
+      document.getElementById('deleteVideoTitle').textContent = videoTitle;
+      
+      // Set form action dengan video ID yang benar
+      const deleteForm = document.getElementById('deleteForm');
+      deleteForm.action = `/admin/delete/${videoId}`;
+      
+      const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+      deleteModal.show();
+    });
+  });
+  
+  // Handle form submission dari modal delete
+  const deleteForm = document.getElementById('deleteForm');
+  if (deleteForm) {
+    deleteForm.addEventListener('submit', function(e) {
+      // Form akan submit secara normal ke endpoint delete
+      console.log('Deleting video...');
+    });
+  }
+});
+</script>
+{% endblock %}
